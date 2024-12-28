@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Video Controlled by Sound</title>
+    <style>
+        body {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #000;
+        }
+        video {
+            max-width: 100%;
+            max-height: 100%;
+            display: none;
+        }
+        button {
+            margin-bottom: 20px;
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <button id="start">Activer le micro</button>
+    <video id="video" src="video.mp4" no-controls muted></video>
+
+    <script>
+        const video = document.getElementById('video');
+        const startButton = document.getElementById('start');
+
+        function enterFullscreen(element) {
+            if (element.requestFullscreen) {
+                element.requestFullscreen();
+            } else if (element.webkitRequestFullscreen) {
+                element.webkitRequestFullscreen();
+            } else if (element.msRequestFullscreen) {
+                element.msRequestFullscreen();
+            }
+        }
+
+        function exitFullscreen() {
+            if (document.exitFullscreen) {
+                document.exitFullscreen();
+            } else if (document.webkitExitFullscreen) {
+                document.webkitExitFullscreen();
+            } else if (document.msExitFullscreen) {
+                document.msExitFullscreen();
+            }
+        }
+
+        startButton.addEventListener('click', () => {
+            navigator.mediaDevices.getUserMedia({ audio: true })
+                .then(stream => {
+                    startButton.style.display = 'none';
+                    video.style.display = 'block';
+                    enterFullscreen(video);
+
+                    const audioContext = new AudioContext();
+                    const microphone = audioContext.createMediaStreamSource(stream);
+                    const analyser = audioContext.createAnalyser();
+                    const dataArray = new Uint8Array(analyser.frequencyBinCount);
+
+                    microphone.connect(analyser);
+
+                    function getVolume() {
+                        analyser.getByteFrequencyData(dataArray);
+                        let sum = 0;
+                        for (let i = 0; i < dataArray.length; i++) {
+                            sum += dataArray[i];
+                        }
+                        return sum / dataArray.length;
+                    }
+
+                    function checkSoundLevel() {
+                        const volume = getVolume();
+                        const threshold = 40; // Adjust as needed
+
+                        if (volume > threshold) {
+                            if (video.paused) {
+                                video.play();
+                            }
+                        } else {
+                            if (!video.paused) {
+                                video.pause();
+                            }
+                        }
+
+                        requestAnimationFrame(checkSoundLevel);
+                    }
+
+                    video.addEventListener('ended', () => {
+                        newpaquet();
+                        alert("allez stop !")
+                    });
+
+                    checkSoundLevel();
+                })
+                .catch(error => {
+                    console.error('Erreur :', error);
+                });
+        });
+
+        function newpaquet() {
+            video.style.display = 'none';
+            exitFullscreen();
+            startButton.style.display = 'block';
+        }
+
+        function newclope() {
+            video.currentTime = 0;
+            video.style.display = 'block';
+            enterFullscreen(video);
+            video.play();
+        }
+    </script>
+</body>
+</html>
